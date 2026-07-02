@@ -3,99 +3,188 @@
 {% block title %}{{ "Edit" if project else "New" }} Project · Installation Coordination System{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3 mb-0">{{ "Edit Project" if project else "New Project" }}</h1>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">{{ "Edit Project" if project else "New Project" }}</h1>
+        <p class="text-muted mb-0">CCTV installation planning, site readiness, and handover control.</p>
+    </div>
     <a class="btn btn-outline-secondary" href="{{ url_for('project_detail', project_id=project['id']) if project else url_for('dashboard') }}">Cancel</a>
 </div>
 
-<form method="post" class="card shadow-sm">
-    <div class="card-body">
-        <div class="row g-3">
-            <div class="col-md-4">
-                <label class="form-label" for="project_code">Project code</label>
-                <input class="form-control" id="project_code" name="project_code" value="{{ project['project_code'] if project else '' }}" required>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label" for="client_name">Client name</label>
-                <input class="form-control" id="client_name" name="client_name" value="{{ project['client_name'] if project else '' }}" required>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label" for="site_name">Site name</label>
-                <input class="form-control" id="site_name" name="site_name" value="{{ project['site_name'] if project else '' }}" required>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label" for="digital_g_contact">Digital G contact</label>
-                <input class="form-control" id="digital_g_contact" name="digital_g_contact" value="{{ project['digital_g_contact'] if project else '' }}">
-            </div>
-            <div class="col-md-4">
-                <label class="form-label" for="pm_name">PM name</label>
-                <input class="form-control" id="pm_name" name="pm_name" value="{{ project['pm_name'] if project else '' }}" required>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label" for="status">Project status</label>
-                <select class="form-select" id="status" name="status">
-                    {% for status in project_statuses %}
-                        <option value="{{ status }}" {% if project and project["status"] == status %}selected{% endif %}>{{ status }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label" for="delivery_date">Delivery date</label>
-                <input class="form-control" id="delivery_date" name="delivery_date" type="date" value="{{ project['delivery_date'] if project else '' }}">
-            </div>
-            <div class="col-md-4">
-                <label class="form-label" for="site_inspection_date">Site inspection date</label>
-                <input class="form-control" id="site_inspection_date" name="site_inspection_date" type="date" value="{{ project['site_inspection_date'] if project else '' }}">
-            </div>
-            <div class="col-md-4">
-                <label class="form-label" for="schedule_status">Schedule status</label>
-                <select class="form-select" id="schedule_status" name="schedule_status">
-                    {% for status in schedule_statuses %}
-                        <option value="{{ status }}" {% if project and project["schedule_status"] == status %}selected{% endif %}>{{ status }}</option>
-                    {% endfor %}
-                </select>
-                <div class="form-text">Only admin/PM users can confirm schedules.</div>
-            </div>
-            <div class="col-12">
-                <label class="form-label">Installation dates</label>
-                <div id="installationDatesList" class="vstack gap-2">
-                    {% for date_value in installation_date_values %}
-                        <div class="input-group installation-date-row">
-                            <input class="form-control" name="installation_dates" type="date" value="{{ date_value }}">
-                            <button class="btn btn-outline-danger remove-installation-date" type="button">Remove</button>
+<form method="post">
+    <div class="row g-3 align-items-start">
+        <div class="col-lg-8">
+            <div class="card shadow-sm project-edit-section">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+                        <h2 class="h5 mb-0">Project Identity</h2>
+                        <span class="badge text-bg-light">Site record</span>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label" for="project_code">Project code</label>
+                            <input class="form-control" id="project_code" name="project_code" value="{{ project['project_code'] if project else '' }}" required>
                         </div>
-                    {% endfor %}
+                        <div class="col-md-4">
+                            <label class="form-label" for="client_name">Client name</label>
+                            <input class="form-control" id="client_name" name="client_name" value="{{ project['client_name'] if project else '' }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="site_name">Site / building</label>
+                            <input class="form-control" id="site_name" name="site_name" value="{{ project['site_name'] if project else '' }}" placeholder="Tower, floor, plant room, shop, warehouse" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="digital_g_contact">Client / site contact</label>
+                            <input class="form-control" id="digital_g_contact" name="digital_g_contact" value="{{ project['digital_g_contact'] if project else '' }}" placeholder="Name, phone, permit contact">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="pm_name">PM / engineer owner</label>
+                            <input class="form-control" id="pm_name" name="pm_name" value="{{ project['pm_name'] if project else '' }}" required>
+                        </div>
+                    </div>
                 </div>
-                <button class="btn btn-outline-primary btn-sm mt-2" id="addInstallationDate" type="button">Add date</button>
-                <div class="form-text">Add each confirmed installation day separately. Installers only see these dates when schedule status is Confirmed.</div>
             </div>
-            {% if project %}
-                <div class="col-12">
-                    <label class="form-label" for="schedule_change_reason">Schedule change reason</label>
-                    <textarea class="form-control" id="schedule_change_reason" name="schedule_change_reason" rows="3" placeholder="Required if installation dates or schedule status are changed"></textarea>
-                    <div class="form-text">This reason is saved in the schedule change log when dates or schedule status change.</div>
+
+            <div class="card shadow-sm project-edit-section mt-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+                        <h2 class="h5 mb-0">Status And Schedule</h2>
+                        <span class="badge text-bg-light">PM control</span>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label" for="status">Project status</label>
+                            <select class="form-select" id="status" name="status">
+                                {% for status in project_statuses %}
+                                    <option value="{{ status }}" {% if project and project["status"] == status %}selected{% endif %}>{{ status }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="schedule_status">Schedule status</label>
+                            <select class="form-select" id="schedule_status" name="schedule_status">
+                                {% for status in schedule_statuses %}
+                                    <option value="{{ status }}" {% if project and project["schedule_status"] == status %}selected{% endif %}>{{ status }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="manufacturing_completion_date">Manufacturing completion date</label>
+                            <input class="form-control" id="manufacturing_completion_date" name="manufacturing_completion_date" type="date" value="{{ project['manufacturing_completion_date'] if project else '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="delivery_date">Arriving Welling office date</label>
+                            <input class="form-control" id="delivery_date" name="delivery_date" type="date" value="{{ project['delivery_date'] if project else '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="site_inspection_date">Site survey / inspection</label>
+                            <input class="form-control" id="site_inspection_date" name="site_inspection_date" type="date" value="{{ project['site_inspection_date'] if project else '' }}">
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Installation dates</label>
+                            <div id="installationDatesList" class="vstack gap-2">
+                                {% for date_value in installation_date_values %}
+                                    <div class="input-group installation-date-row">
+                                        <input class="form-control" name="installation_dates" type="date" value="{{ date_value }}">
+                                        <button class="btn btn-outline-danger remove-installation-date" type="button">Remove</button>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            <button class="btn btn-outline-primary btn-sm mt-2" id="addInstallationDate" type="button">Add date</button>
+                        </div>
+                        {% if project %}
+                            <div class="col-12">
+                                <label class="form-label" for="schedule_change_reason">Schedule change reason</label>
+                                <textarea class="form-control" id="schedule_change_reason" name="schedule_change_reason" rows="3" placeholder="Example: Client permit not ready; ceiling access delayed; waiting for lift booking"></textarea>
+                            </div>
+                        {% endif %}
+                    </div>
                 </div>
-            {% endif %}
-            <div class="col-md-6">
-                <label class="form-label" for="scope_of_work">Scope of work</label>
-                <textarea class="form-control" id="scope_of_work" name="scope_of_work" rows="5">{{ project['scope_of_work'] if project else '' }}</textarea>
             </div>
-            <div class="col-md-6">
-                <label class="form-label" for="todays_scope">Today's scope</label>
-                <textarea class="form-control" id="todays_scope" name="todays_scope" rows="5">{{ project['todays_scope'] if project else '' }}</textarea>
+
+            <div class="card shadow-sm project-edit-section mt-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+                        <h2 class="h5 mb-0">CCTV Work Pack</h2>
+                        <span class="badge text-bg-light">Installer briefing</span>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="scope_of_work">Full CCTV scope</label>
+                            <textarea class="form-control work-pack-textarea" id="scope_of_work" name="scope_of_work" rows="9" placeholder="Camera points, cabling route, NVR/switch location, client requirements">{{ project['scope_of_work'] if project else '' }}</textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="todays_scope">Today's site scope</label>
+                            <textarea class="form-control work-pack-textarea" id="todays_scope" name="todays_scope" rows="9" placeholder="Work allowed today, access limits, testing target">{{ project['todays_scope'] if project else '' }}</textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="notes">Site constraints and handover notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="5" placeholder="Ceiling access, power, PoE switch port, IP range, permits, lift booking, client sign-off">{{ project['notes'] if project else '' }}</textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="next_action">Next action</label>
+                            <input class="form-control" id="next_action" name="next_action" value="{{ project['next_action'] if project else '' }}" placeholder="Example: Confirm PoE switch location and arrange site access">
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="col-12">
-                <label class="form-label" for="next_action">Next action</label>
-                <input class="form-control" id="next_action" name="next_action" value="{{ project['next_action'] if project else '' }}">
-            </div>
-            <div class="col-12">
-                <label class="form-label" for="notes">Notes</label>
-                <textarea class="form-control" id="notes" name="notes" rows="4">{{ project['notes'] if project else '' }}</textarea>
+
+            <div class="text-end mt-3">
+                <button class="btn btn-primary" type="submit">Save Project</button>
             </div>
         </div>
-    </div>
-    <div class="card-footer bg-white text-end">
-        <button class="btn btn-primary" type="submit">Save Project</button>
+
+        <div class="col-lg-4">
+            <div class="project-edit-sidebar">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h2 class="h6 mb-3">CCTV Scope Inserts</h2>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-primary btn-sm text-start quick-insert" type="button" data-target="scope_of_work" data-text="- Install and align CCTV cameras at agreed locations&#10;- Pull and label Cat6 cable from camera points to network / NVR location&#10;- Terminate RJ45 ends and test continuity&#10;- Connect cameras to PoE switch / NVR and confirm live view&#10;- Adjust angle, focus, timestamp, and recording settings">
+                                Standard camera install
+                            </button>
+                            <button class="btn btn-outline-primary btn-sm text-start quick-insert" type="button" data-target="scope_of_work" data-text="- Verify NVR storage, recording schedule, and channel mapping&#10;- Confirm monitor / client app live view access&#10;- Set camera names by area and floor&#10;- Capture screenshots for handover record">
+                                NVR and handover
+                            </button>
+                            <button class="btn btn-outline-primary btn-sm text-start quick-insert" type="button" data-target="todays_scope" data-text="- Site walk with client / guard room contact&#10;- Confirm camera positions before drilling&#10;- Complete cable route and camera mounting for accessible areas&#10;- Test live view before leaving site">
+                                Today install briefing
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm mt-3">
+                    <div class="card-body">
+                        <h2 class="h6 mb-3">Site Readiness Notes</h2>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-secondary btn-sm text-start quick-insert" type="button" data-target="notes" data-text="- Access: confirm ceiling / riser / plant room access&#10;- Work permit: hot work / drilling / lift booking if required&#10;- Power and network: confirm PoE switch, NVR power, LAN point, and IP range&#10;- Safety: ladder/scaffold access and restricted work hours&#10;- Client sign-off: camera view angle approval required before completion">
+                                Access, permit, network
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm text-start quick-insert" type="button" data-target="notes" data-text="- Blocker: site access not confirmed&#10;- Blocker: cable route not approved&#10;- Blocker: no PoE / power available at equipment location&#10;- Blocker: waiting for client camera position approval">
+                                Common blockers
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm mt-3">
+                    <div class="card-body">
+                        <h2 class="h6 mb-3">Next Action Shortcuts</h2>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-success btn-sm text-start set-next-action" type="button" data-text="Confirm camera positions, cable route, and site access before installation.">
+                                Confirm site readiness
+                            </button>
+                            <button class="btn btn-outline-success btn-sm text-start set-next-action" type="button" data-text="Arrange installer visit and remind team not to promise dates on site.">
+                                Arrange installer visit
+                            </button>
+                            <button class="btn btn-outline-success btn-sm text-start set-next-action" type="button" data-text="Complete live view test, recording check, and client handover photos.">
+                                Complete handover check
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </form>
 {% endblock %}
@@ -104,6 +193,8 @@
 <script>
 const datesList = document.getElementById("installationDatesList");
 const addDateButton = document.getElementById("addInstallationDate");
+const quickInsertButtons = document.querySelectorAll(".quick-insert");
+const nextActionButtons = document.querySelectorAll(".set-next-action");
 
 function updateRemoveButtons() {
     const rows = datesList.querySelectorAll(".installation-date-row");
@@ -132,5 +223,24 @@ datesList.addEventListener("click", (event) => {
     updateRemoveButtons();
 });
 updateRemoveButtons();
+
+function appendToField(fieldId, text) {
+    const field = document.getElementById(fieldId);
+    const prefix = field.value.trim() ? "\n\n" : "";
+    field.value = `${field.value}${prefix}${text}`;
+    field.focus();
+}
+
+quickInsertButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+        appendToField(button.dataset.target, button.dataset.text);
+    });
+});
+
+nextActionButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+        document.getElementById("next_action").value = button.dataset.text;
+    });
+});
 </script>
 {% endblock %}

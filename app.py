@@ -79,6 +79,7 @@ def init_db():
             pm_name TEXT NOT NULL,
             scope_of_work TEXT,
             todays_scope TEXT,
+            manufacturing_completion_date TEXT,
             delivery_date TEXT,
             site_inspection_date TEXT,
             installation_dates TEXT,
@@ -148,6 +149,7 @@ def init_db():
     )
 
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    ensure_project_columns(db)
     ensure_project_share_codes(db)
     ensure_incident_attachment_columns(db)
     db.execute("UPDATE incident_logs SET follow_up_status = 'Pending' WHERE follow_up_status = 'Open'")
@@ -250,6 +252,13 @@ def ensure_project_share_codes(db):
             "UPDATE projects SET share_code = ? WHERE id = ?",
             (secrets.token_urlsafe(8), project["id"]),
         )
+
+
+def ensure_project_columns(db):
+    columns = db.execute("PRAGMA table_info(projects)").fetchall()
+    column_names = {column["name"] for column in columns}
+    if "manufacturing_completion_date" not in column_names:
+        db.execute("ALTER TABLE projects ADD COLUMN manufacturing_completion_date TEXT")
 
 
 def ensure_incident_attachment_columns(db):
@@ -451,6 +460,7 @@ def collect_project_form():
         "pm_name": request.form.get("pm_name", "").strip(),
         "scope_of_work": request.form.get("scope_of_work", "").strip(),
         "todays_scope": request.form.get("todays_scope", "").strip(),
+        "manufacturing_completion_date": request.form.get("manufacturing_completion_date", "").strip(),
         "delivery_date": request.form.get("delivery_date", "").strip(),
         "site_inspection_date": request.form.get("site_inspection_date", "").strip(),
         "installation_dates": collect_installation_dates(),
@@ -749,7 +759,7 @@ def dashboard():
         if not project["is_completed"] and project["schedule_status"] != "Confirmed":
             project["risk_reasons"].append("schedule not confirmed")
         if project["is_overdue"]:
-            project["risk_reasons"].append("delivery overdue")
+            project["risk_reasons"].append("office arrival overdue")
         project["is_problematic"] = bool(project["risk_reasons"])
         projects.append(project)
 
@@ -808,12 +818,12 @@ def create_project():
                     """
                     INSERT INTO projects (
                         project_code, client_name, site_name, digital_g_contact, pm_name,
-                        scope_of_work, todays_scope, delivery_date, site_inspection_date,
+                        scope_of_work, todays_scope, manufacturing_completion_date, delivery_date, site_inspection_date,
                         installation_dates, share_code, schedule_status, status, next_action, notes
                     )
                     VALUES (
                         :project_code, :client_name, :site_name, :digital_g_contact, :pm_name,
-                        :scope_of_work, :todays_scope, :delivery_date, :site_inspection_date,
+                        :scope_of_work, :todays_scope, :manufacturing_completion_date, :delivery_date, :site_inspection_date,
                         :installation_dates, :share_code, :schedule_status, :status, :next_action, :notes
                     )
                     """,
@@ -857,6 +867,16 @@ def project_detail(project_id):
     media_by_category = {category: [] for category in MEDIA_CATEGORIES}
     for item in project_media:
         media_by_category.setdefault(item["category"], []).append(item)
+    project_summary = {
+        "incident_count": len(incidents),
+        "open_incident_count": sum(
+            1 for incident in incidents if incident["follow_up_status"] != "Complete"
+        ),
+        "pending_schedule_request_count": sum(
+            1 for schedule_request in schedule_requests if schedule_request["status"] == "Pending PM Review"
+        ),
+        "media_count": len(project_media),
+    }
 
     return render_template(
         "project_detail.html",
@@ -866,6 +886,7 @@ def project_detail(project_id):
         schedule_change_logs=schedule_change_logs,
         media_by_category=media_by_category,
         media_categories=MEDIA_CATEGORIES,
+        project_summary=project_summary,
         installation_dates=split_installation_dates(project["installation_dates"]),
         can_view_dates=(g.user["role"] != "installer" or installer_can_view_dates(project)),
         share_url=url_for("shared_job_task", share_code=project["share_code"], _external=True),
@@ -900,6 +921,7 @@ def edit_project(project_id):
                         pm_name = :pm_name,
                         scope_of_work = :scope_of_work,
                         todays_scope = :todays_scope,
+                        manufacturing_completion_date = :manufacturing_completion_date,
                         delivery_date = :delivery_date,
                         site_inspection_date = :site_inspection_date,
                         installation_dates = :installation_dates,

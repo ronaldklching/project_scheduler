@@ -46,7 +46,11 @@
                         <div><span class="badge text-bg-secondary">{{ project["status"] }}</span></div>
                     </div>
                     <div class="col-md-6">
-                        <div class="field-label">Delivery date</div>
+                        <div class="field-label">Manufacturing completion date</div>
+                        <div>{{ project["manufacturing_completion_date"] or "—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">Arriving Welling office date</div>
                         <div>{{ project["delivery_date"] or "—" }}</div>
                     </div>
                     <div class="col-md-6">

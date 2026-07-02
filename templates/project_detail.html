@@ -8,7 +8,7 @@
         <h1 class="h3 mb-1">{{ project["project_code"] }} · {{ project["site_name"] }}</h1>
         <div class="text-muted">{{ project["client_name"] }}</div>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex flex-wrap gap-2">
         <a class="btn btn-outline-secondary" href="{{ url_for('dashboard') }}">Dashboard</a>
         <a class="btn btn-outline-primary" href="{{ url_for('brief', project_id=project['id']) }}">Pre-work Brief</a>
         {% if g.user["role"] in ["admin", "pm"] %}
@@ -33,6 +33,51 @@
     </div>
 {% endif %}
 
+<div class="project-command-strip mb-3">
+    <div class="project-command-item">
+        <div class="project-command-label">Project Status</div>
+        <span class="badge
+            {% if project['status'] == 'Completed' %}text-bg-success
+            {% elif project['status'] in ['Confirmed', 'In Progress'] %}text-bg-primary
+            {% elif project['status'] == 'Pending Confirmation' %}text-bg-warning
+            {% else %}text-bg-secondary{% endif %}">
+            {{ project["status"] }}
+        </span>
+    </div>
+    <div class="project-command-item">
+        <div class="project-command-label">Schedule</div>
+        <span class="badge
+            {% if project['schedule_status'] == 'Confirmed' %}text-bg-success
+            {% elif project['schedule_status'] == 'Pending' %}text-bg-warning
+            {% else %}text-bg-secondary{% endif %}">
+            {{ project["schedule_status"] }}
+        </span>
+    </div>
+    <div class="project-command-item">
+        <div class="project-command-label">Open Incidents</div>
+        <div class="project-command-value {% if project_summary['open_incident_count'] %}text-danger{% endif %}">
+            {{ project_summary["open_incident_count"] }}
+        </div>
+    </div>
+    <div class="project-command-item">
+        <div class="project-command-label">Schedule Requests</div>
+        <div class="project-command-value {% if project_summary['pending_schedule_request_count'] %}text-warning{% endif %}">
+            {{ project_summary["pending_schedule_request_count"] }}
+        </div>
+    </div>
+    <div class="project-command-item">
+        <div class="project-command-label">Photo / Video Evidence</div>
+        <div class="project-command-value">{{ project_summary["media_count"] }}</div>
+    </div>
+</div>
+
+<div class="project-jumpbar mb-3">
+    <a href="#work-pack">Work Pack</a>
+    <a href="#schedule">Schedule</a>
+    <a href="#media">Media</a>
+    <a href="#incidents">Incidents</a>
+</div>
+
 {% if g.user["role"] in ["admin", "pm"] %}
     <div class="card shadow-sm mb-3">
         <div class="card-body">
@@ -53,16 +98,19 @@
 
 <div class="row g-3">
     <div class="col-lg-8">
-        <div class="card shadow-sm h-100">
+        <div class="card shadow-sm h-100" id="work-pack">
             <div class="card-body">
-                <h2 class="h5 mb-3">Project Information</h2>
+                <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+                    <h2 class="h5 mb-0">CCTV Work Pack</h2>
+                    <span class="badge text-bg-light">Installer source of truth</span>
+                </div>
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <div class="field-label">Digital G contact</div>
+                        <div class="field-label">Client / site contact</div>
                         <div>{{ project["digital_g_contact"] or "—" }}</div>
                     </div>
                     <div class="col-md-6">
-                        <div class="field-label">PM name</div>
+                        <div class="field-label">PM / engineer owner</div>
                         <div>{{ project["pm_name"] }}</div>
                     </div>
                     <div class="col-md-6">
@@ -74,14 +122,18 @@
                         <div><span class="badge text-bg-info">{{ project["schedule_status"] }}</span></div>
                     </div>
                     <div class="col-md-6">
-                        <div class="field-label">Delivery date</div>
+                        <div class="field-label">Manufacturing completion date</div>
+                        <div>{{ project["manufacturing_completion_date"] or "—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">Arriving Welling office date</div>
                         <div>{{ project["delivery_date"] or "—" }}</div>
                     </div>
                     <div class="col-md-6">
-                        <div class="field-label">Site inspection date</div>
+                        <div class="field-label">Site survey / inspection</div>
                         <div>{{ project["site_inspection_date"] or "—" }}</div>
                     </div>
-                    <div class="col-12">
+                    <div class="col-12" id="schedule">
                         <div class="field-label">Installation dates</div>
                         {% if can_view_dates %}
                             {% if installation_dates %}
@@ -100,26 +152,68 @@
                         {% endif %}
                     </div>
                     <div class="col-md-6">
-                        <div class="field-label">Scope of work</div>
-                        <div class="pre-wrap">{{ project["scope_of_work"] or "—" }}</div>
+                        <div class="field-label">Full CCTV scope</div>
+                        <div class="project-work-block pre-wrap">{{ project["scope_of_work"] or "—" }}</div>
                     </div>
                     <div class="col-md-6">
-                        <div class="field-label">Today's scope</div>
-                        <div class="pre-wrap">{{ project["todays_scope"] or "—" }}</div>
+                        <div class="field-label">Today's site scope</div>
+                        <div class="project-work-block pre-wrap">{{ project["todays_scope"] or "—" }}</div>
                     </div>
                     <div class="col-12">
-                        <div class="field-label">Notes</div>
-                        <div class="pre-wrap">{{ project["notes"] or "—" }}</div>
+                        <div class="field-label">Site constraints and handover notes</div>
+                        <div class="project-work-block pre-wrap">{{ project["notes"] or "—" }}</div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     <div class="col-lg-4">
-        <div class="card shadow-sm h-100">
+        <div class="card shadow-sm">
             <div class="card-body">
                 <h2 class="h5 mb-3">Next Action</h2>
-                <p class="mb-0">{{ project["next_action"] or "No next action recorded." }}</p>
+                <div class="next-action-panel">{{ project["next_action"] or "No next action recorded." }}</div>
+            </div>
+        </div>
+        <div class="card shadow-sm mt-3">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Site Readiness</h2>
+                <div class="readiness-list">
+                    <div class="readiness-item {{ 'is-ready' if project['site_inspection_date'] else '' }}">
+                        <span></span>
+                        <div>
+                            <strong>Survey / access checked</strong>
+                            <div class="small text-muted">{{ project["site_inspection_date"] or "No survey date recorded" }}</div>
+                        </div>
+                    </div>
+                    <div class="readiness-item {{ 'is-ready' if project['schedule_status'] == 'Confirmed' else '' }}">
+                        <span></span>
+                        <div>
+                            <strong>Installation schedule confirmed</strong>
+                            <div class="small text-muted">{{ project["schedule_status"] }}</div>
+                        </div>
+                    </div>
+                    <div class="readiness-item {{ 'is-ready' if installation_dates and can_view_dates else '' }}">
+                        <span></span>
+                        <div>
+                            <strong>Installer dates visible</strong>
+                            <div class="small text-muted">{{ installation_dates|length }} date{{ '' if installation_dates|length == 1 else 's' }}</div>
+                        </div>
+                    </div>
+                    <div class="readiness-item {{ 'is-ready' if project_summary['open_incident_count'] == 0 else '' }}">
+                        <span></span>
+                        <div>
+                            <strong>Issues under control</strong>
+                            <div class="small text-muted">{{ project_summary["open_incident_count"] }} open incident{{ '' if project_summary["open_incident_count"] == 1 else 's' }}</div>
+                        </div>
+                    </div>
+                    <div class="readiness-item {{ 'is-ready' if project_summary['media_count'] else '' }}">
+                        <span></span>
+                        <div>
+                            <strong>Evidence uploaded</strong>
+                            <div class="small text-muted">{{ project_summary["media_count"] }} file{{ '' if project_summary["media_count"] == 1 else 's' }}</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -265,6 +359,11 @@
     </div>
 {% endif %}
 
+<div class="d-flex justify-content-between align-items-center mt-4 mb-2" id="media">
+    <h2 class="h4 mb-0">CCTV Evidence</h2>
+    <span class="badge text-bg-light">{{ project_summary["media_count"] }} files</span>
+</div>
+
 <div class="row g-3 mt-1">
     {% for category_key, category_label in media_categories.items() %}
         <div class="col-lg-6">
@@ -314,7 +413,7 @@
     {% endfor %}
 </div>
 
-<div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+<div class="d-flex justify-content-between align-items-center mt-4 mb-2" id="incidents">
     <h2 class="h4 mb-0">Incident Log</h2>
     {% if g.user["role"] in ["admin", "pm"] %}
         <a class="btn btn-sm btn-primary" href="{{ url_for('create_incident', project_id=project['id']) }}">Add Incident</a>
