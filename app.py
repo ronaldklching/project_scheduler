@@ -32,6 +32,7 @@ PROJECT_STATUSES = ["Draft", "Pending Confirmation", "Confirmed", "In Progress",
 SCHEDULE_STATUSES = ["Draft", "Pending", "Confirmed"]
 FOLLOW_UP_STATUSES = ["Pending", "In Progress", "Complete"]
 USER_ROLES = ["admin", "pm", "installer", "client"]
+CAMERA_STATUSES = ["Planned", "Installed", "Tested", "Handover", "Blocked"]
 MEDIA_CATEGORIES = {
     "inspection": "Inspection",
     "installation_complete": "Installation Complete",
@@ -116,6 +117,20 @@ def init_db():
             stored_filename TEXT NOT NULL,
             media_type TEXT NOT NULL,
             uploaded_by TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS project_cameras (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id INTEGER NOT NULL,
+            camera_name TEXT NOT NULL,
+            location TEXT,
+            ip_address TEXT,
+            model TEXT,
+            channel TEXT,
+            install_status TEXT NOT NULL DEFAULT 'Planned',
+            notes TEXT,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
         );
@@ -685,6 +700,25 @@ def dashboard():
     if selected_filter not in {"active", "problematic", "completed", "all"}:
         selected_filter = "active"
     search_query = request.args.get("q", "").strip()
+    sort_by = request.args.get("sort", "created_at")
+    sort_order = request.args.get("order", "desc")
+    sortable_columns = {
+        "project_code",
+        "client_name",
+        "site_name",
+        "pm_name",
+        "created_at",
+        "status",
+        "schedule_status",
+        "delivery_date",
+        "open_incident_count",
+        "health",
+        "next_action",
+    }
+    if sort_by not in sortable_columns:
+        sort_by = "created_at"
+    if sort_order not in {"asc", "desc"}:
+        sort_order = "desc"
 
     if g.user["role"] == "client":
         rows = get_db().execute(
@@ -794,11 +828,30 @@ def dashboard():
     elif selected_filter == "completed":
         projects = [project for project in projects if project["is_completed"]]
 
+    def sort_value(project):
+        if sort_by == "health":
+            return (
+                len(project["risk_reasons"]),
+                project["pending_schedule_request_count"],
+                project["open_incident_count"],
+                project["project_code"].casefold(),
+            )
+        value = project.get(sort_by)
+        if value is None:
+            return ""
+        if isinstance(value, str):
+            return value.casefold()
+        return value
+
+    projects.sort(key=sort_value, reverse=(sort_order == "desc"))
+
     return render_template(
         "dashboard.html",
         projects=projects,
         selected_filter=selected_filter,
         search_query=search_query,
+        sort_by=sort_by,
+        sort_order=sort_order,
         stats=stats,
     )
 
@@ -856,6 +909,10 @@ def project_detail(project_id):
         "SELECT * FROM project_media WHERE project_id = ? ORDER BY created_at DESC, id DESC",
         (project_id,),
     ).fetchall()
+    project_cameras = get_db().execute(
+        "SELECT * FROM project_cameras WHERE project_id = ? ORDER BY id",
+        (project_id,),
+    ).fetchall()
     schedule_requests = get_db().execute(
         "SELECT * FROM schedule_requests WHERE project_id = ? ORDER BY created_at DESC, id DESC",
         (project_id,),
@@ -876,12 +933,18 @@ def project_detail(project_id):
             1 for schedule_request in schedule_requests if schedule_request["status"] == "Pending PM Review"
         ),
         "media_count": len(project_media),
+        "camera_count": len(project_cameras),
+        "camera_blocked_count": sum(
+            1 for camera in project_cameras if camera["install_status"] == "Blocked"
+        ),
     }
 
     return render_template(
         "project_detail.html",
         project=project,
         incidents=incidents,
+        project_cameras=project_cameras,
+        camera_statuses=CAMERA_STATUSES,
         schedule_requests=schedule_requests,
         schedule_change_logs=schedule_change_logs,
         media_by_category=media_by_category,
@@ -1100,6 +1163,54 @@ def upload_project_media(project_id):
     )
     get_db().commit()
     flash(f"{MEDIA_CATEGORIES[category]} media uploaded.", "success")
+    return redirect(url_for("project_detail", project_id=project_id))
+
+
+@app.route("/projects/<int:project_id>/cameras", methods=("POST",))
+@pm_or_admin_required
+def add_project_camera(project_id):
+    get_project(project_id)
+    camera_name = request.form.get("camera_name", "").strip()
+    location = request.form.get("location", "").strip()
+    ip_address = request.form.get("ip_address", "").strip()
+    model = request.form.get("model", "").strip()
+    channel = request.form.get("channel", "").strip()
+    install_status = request.form.get("install_status", "Planned")
+    notes = request.form.get("camera_notes", "").strip()
+
+    if install_status not in CAMERA_STATUSES:
+        install_status = "Planned"
+    if not camera_name:
+        flash("Camera name is required.", "danger")
+        return redirect(url_for("project_detail", project_id=project_id))
+
+    get_db().execute(
+        """
+        INSERT INTO project_cameras (
+            project_id, camera_name, location, ip_address, model, channel, install_status, notes
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (project_id, camera_name, location, ip_address, model, channel, install_status, notes),
+    )
+    get_db().commit()
+    flash("IP camera added.", "success")
+    return redirect(url_for("project_detail", project_id=project_id))
+
+
+@app.route("/projects/<int:project_id>/cameras/<int:camera_id>/delete", methods=("POST",))
+@pm_or_admin_required
+def delete_project_camera(project_id, camera_id):
+    get_project(project_id)
+    result = get_db().execute(
+        "DELETE FROM project_cameras WHERE id = ? AND project_id = ?",
+        (camera_id, project_id),
+    )
+    get_db().commit()
+    if result.rowcount:
+        flash("IP camera removed.", "success")
+    else:
+        flash("IP camera was not found.", "danger")
     return redirect(url_for("project_detail", project_id=project_id))
 
 

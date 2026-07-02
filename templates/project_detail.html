@@ -69,11 +69,18 @@
         <div class="project-command-label">Photo / Video Evidence</div>
         <div class="project-command-value">{{ project_summary["media_count"] }}</div>
     </div>
+    <div class="project-command-item">
+        <div class="project-command-label">IP Cameras</div>
+        <div class="project-command-value {% if project_summary['camera_blocked_count'] %}text-danger{% endif %}">
+            {{ project_summary["camera_count"] }}
+        </div>
+    </div>
 </div>
 
 <div class="project-jumpbar mb-3">
     <a href="#work-pack">Work Pack</a>
     <a href="#schedule">Schedule</a>
+    <a href="#camera-list">IP Cameras</a>
     <a href="#media">Media</a>
     <a href="#incidents">Incidents</a>
 </div>
@@ -213,8 +220,115 @@
                             <div class="small text-muted">{{ project_summary["media_count"] }} file{{ '' if project_summary["media_count"] == 1 else 's' }}</div>
                         </div>
                     </div>
+                    <div class="readiness-item {{ 'is-ready' if project_summary['camera_count'] and project_summary['camera_blocked_count'] == 0 else '' }}">
+                        <span></span>
+                        <div>
+                            <strong>Camera list ready</strong>
+                            <div class="small text-muted">{{ project_summary["camera_count"] }} camera{{ '' if project_summary["camera_count"] == 1 else 's' }}{% if project_summary["camera_blocked_count"] %}, {{ project_summary["camera_blocked_count"] }} blocked{% endif %}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mt-4 mb-2" id="camera-list">
+    <h2 class="h4 mb-0">IP Camera List</h2>
+    <span class="badge text-bg-light">{{ project_summary["camera_count"] }} cameras</span>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        {% if g.user["role"] in ["admin", "pm"] %}
+            <form class="camera-form mb-3" method="post" action="{{ url_for('add_project_camera', project_id=project['id']) }}">
+                <div class="row g-2">
+                    <div class="col-md-3">
+                        <label class="form-label" for="camera_name">Camera ID / name</label>
+                        <input class="form-control" id="camera_name" name="camera_name" placeholder="CAM-01 / Lobby" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="location">Location</label>
+                        <input class="form-control" id="location" name="location" placeholder="Lobby entrance, G/F">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="ip_address">IP address</label>
+                        <input class="form-control" id="ip_address" name="ip_address" placeholder="192.168.1.101">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="channel">NVR channel</label>
+                        <input class="form-control" id="channel" name="channel" placeholder="CH01">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="install_status">Status</label>
+                        <select class="form-select" id="install_status" name="install_status">
+                            {% for status in camera_statuses %}
+                                <option value="{{ status }}">{{ status }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="model">Model / lens</label>
+                        <input class="form-control" id="model" name="model" placeholder="Dome 4MP / 2.8mm">
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label" for="camera_notes">Notes</label>
+                        <input class="form-control" id="camera_notes" name="camera_notes" placeholder="PoE switch port, view direction, blocker, client approval">
+                    </div>
+                </div>
+                <button class="btn btn-outline-primary btn-sm mt-3" type="submit">Add Camera</button>
+            </form>
+        {% endif %}
+
+        <div class="table-responsive">
+            <table class="table camera-table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Camera</th>
+                        <th>Location</th>
+                        <th>IP</th>
+                        <th>Model</th>
+                        <th>Channel</th>
+                        <th>Status</th>
+                        <th>Notes</th>
+                        {% if g.user["role"] in ["admin", "pm"] %}
+                            <th></th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for camera in project_cameras %}
+                        <tr>
+                            <td class="fw-semibold">{{ camera["camera_name"] }}</td>
+                            <td>{{ camera["location"] or "—" }}</td>
+                            <td class="text-nowrap">{{ camera["ip_address"] or "—" }}</td>
+                            <td>{{ camera["model"] or "—" }}</td>
+                            <td>{{ camera["channel"] or "—" }}</td>
+                            <td>
+                                <span class="badge
+                                    {% if camera['install_status'] in ['Tested', 'Handover'] %}text-bg-success
+                                    {% elif camera['install_status'] == 'Installed' %}text-bg-primary
+                                    {% elif camera['install_status'] == 'Blocked' %}text-bg-danger
+                                    {% else %}text-bg-secondary{% endif %}">
+                                    {{ camera["install_status"] }}
+                                </span>
+                            </td>
+                            <td><div class="pre-wrap">{{ camera["notes"] or "—" }}</div></td>
+                            {% if g.user["role"] in ["admin", "pm"] %}
+                                <td class="text-end">
+                                    <form method="post" action="{{ url_for('delete_project_camera', project_id=project['id'], camera_id=camera['id']) }}" onsubmit="return confirm('Delete this IP camera?');">
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                                    </form>
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="{{ 8 if g.user['role'] in ['admin', 'pm'] else 7 }}" class="text-center text-muted py-4">No IP cameras added yet.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

@@ -2,6 +2,16 @@
 
 {% block title %}Dashboard · Installation Coordination System{% endblock %}
 
+{% macro sort_header(label, key) -%}
+    {% set next_order = 'desc' if sort_by == key and sort_order == 'asc' else 'asc' %}
+    <a class="dashboard-sort-link" href="{{ url_for('dashboard', filter=selected_filter, q=search_query, sort=key, order=next_order) }}">
+        <span>{{ label }}</span>
+        {% if sort_by == key %}
+            <span class="dashboard-sort-indicator">{{ sort_order }}</span>
+        {% endif %}
+    </a>
+{%- endmacro %}
+
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <div>
@@ -27,25 +37,25 @@
 
 <div class="row g-3 mb-3">
     <div class="col-6 col-lg-3">
-        <a class="dashboard-stat {{ 'is-active' if selected_filter == 'active' else '' }}" href="{{ url_for('dashboard', filter='active', q=search_query) }}">
+        <a class="dashboard-stat {{ 'is-active' if selected_filter == 'active' else '' }}" href="{{ url_for('dashboard', filter='active', q=search_query, sort=sort_by, order=sort_order) }}">
             <span class="dashboard-stat-label">Active</span>
             <span class="dashboard-stat-value">{{ stats["active"] }}</span>
         </a>
     </div>
     <div class="col-6 col-lg-3">
-        <a class="dashboard-stat dashboard-stat-warning {{ 'is-active' if selected_filter == 'problematic' else '' }}" href="{{ url_for('dashboard', filter='problematic', q=search_query) }}">
+        <a class="dashboard-stat dashboard-stat-warning {{ 'is-active' if selected_filter == 'problematic' else '' }}" href="{{ url_for('dashboard', filter='problematic', q=search_query, sort=sort_by, order=sort_order) }}">
             <span class="dashboard-stat-label">Problematic</span>
             <span class="dashboard-stat-value">{{ stats["problematic"] }}</span>
         </a>
     </div>
     <div class="col-6 col-lg-3">
-        <a class="dashboard-stat dashboard-stat-success {{ 'is-active' if selected_filter == 'completed' else '' }}" href="{{ url_for('dashboard', filter='completed', q=search_query) }}">
+        <a class="dashboard-stat dashboard-stat-success {{ 'is-active' if selected_filter == 'completed' else '' }}" href="{{ url_for('dashboard', filter='completed', q=search_query, sort=sort_by, order=sort_order) }}">
             <span class="dashboard-stat-label">Completed</span>
             <span class="dashboard-stat-value">{{ stats["completed"] }}</span>
         </a>
     </div>
     <div class="col-6 col-lg-3">
-        <a class="dashboard-stat {{ 'is-active' if selected_filter == 'all' else '' }}" href="{{ url_for('dashboard', filter='all', q=search_query) }}">
+        <a class="dashboard-stat {{ 'is-active' if selected_filter == 'all' else '' }}" href="{{ url_for('dashboard', filter='all', q=search_query, sort=sort_by, order=sort_order) }}">
             <span class="dashboard-stat-label">All Matching</span>
             <span class="dashboard-stat-value">{{ stats["all"] }}</span>
         </a>
@@ -54,11 +64,13 @@
 
 <form class="dashboard-toolbar mb-3" method="get">
     <input type="hidden" name="filter" value="{{ selected_filter }}">
+    <input type="hidden" name="sort" value="{{ sort_by }}">
+    <input type="hidden" name="order" value="{{ sort_order }}">
     <div class="input-group">
         <input class="form-control" name="q" value="{{ search_query }}" placeholder="Search project, client, site, PM, or next action">
         <button class="btn btn-primary" type="submit">Search</button>
         {% if search_query %}
-            <a class="btn btn-outline-secondary" href="{{ url_for('dashboard', filter=selected_filter) }}">Clear</a>
+            <a class="btn btn-outline-secondary" href="{{ url_for('dashboard', filter=selected_filter, sort=sort_by, order=sort_order) }}">Clear</a>
         {% endif %}
     </div>
 </form>
@@ -68,15 +80,16 @@
         <table class="table table-hover align-middle dashboard-table mb-0">
             <thead class="table-light">
                 <tr>
-                    <th>Project Code</th>
-                    <th>Client</th>
-                    <th>Site</th>
-                    <th>PM</th>
-                    <th>Status</th>
-                    <th>Schedule</th>
-                    <th>Incidents</th>
-                    <th>Health</th>
-                    <th>Next Action</th>
+                    <th>{{ sort_header("Project Code", "project_code") }}</th>
+                    <th>{{ sort_header("Client", "client_name") }}</th>
+                    <th>{{ sort_header("Site", "site_name") }}</th>
+                    <th>{{ sort_header("PM", "pm_name") }}</th>
+                    <th>{{ sort_header("Created", "created_at") }}</th>
+                    <th>{{ sort_header("Status", "status") }}</th>
+                    <th>{{ sort_header("Schedule", "schedule_status") }}</th>
+                    <th>{{ sort_header("Incidents", "open_incident_count") }}</th>
+                    <th>{{ sort_header("Health", "health") }}</th>
+                    <th>{{ sort_header("Next Action", "next_action") }}</th>
                     <th></th>
                 </tr>
             </thead>
@@ -87,6 +100,9 @@
                         <td>{{ project["client_name"] }}</td>
                         <td>{{ project["site_name"] }}</td>
                         <td>{{ project["pm_name"] }}</td>
+                        <td class="text-nowrap">
+                            <span class="small text-muted">{{ project["created_at"][:10] if project["created_at"] else "—" }}</span>
+                        </td>
                         <td>
                             <span class="badge
                                 {% if project['status'] == 'Completed' %}text-bg-success
@@ -141,7 +157,7 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="10" class="text-center text-muted py-5">No projects match this view.</td>
+                        <td colspan="11" class="text-center text-muted py-5">No projects match this view.</td>
                     </tr>
                 {% endfor %}
             </tbody>
