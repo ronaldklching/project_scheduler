@@ -124,6 +124,62 @@ body {
     min-width: 900px;
 }
 
+.dashboard-stat {
+    background: #fff;
+    border: 1px solid #d9e0ea;
+    border-left: 0.35rem solid #6c757d;
+    border-radius: 0.5rem;
+    color: #1f2937;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-height: 5.4rem;
+    padding: 0.85rem 1rem;
+    text-decoration: none;
+}
+
+.dashboard-stat:hover,
+.dashboard-stat.is-active {
+    border-color: #0d6efd;
+    border-left-color: #0d6efd;
+    box-shadow: 0 0.35rem 1rem rgba(13, 110, 253, 0.12);
+    color: #0b5ed7;
+}
+
+.dashboard-stat-warning {
+    border-left-color: #dc3545;
+}
+
+.dashboard-stat-success {
+    border-left-color: #198754;
+}
+
+.dashboard-stat-label {
+    color: #667085;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.dashboard-stat-value {
+    font-size: 1.8rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.dashboard-toolbar {
+    max-width: 46rem;
+}
+
+.dashboard-table {
+    min-width: 1120px;
+}
+
+.dashboard-risk-badge {
+    white-space: normal;
+    text-align: left;
+}
+
 .media-thumb {
     aspect-ratio: 4 / 3;
     background: #e9edf3;

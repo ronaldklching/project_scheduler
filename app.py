@@ -671,18 +671,126 @@ def reset_user_password(user_id):
 @app.route("/dashboard")
 @login_required
 def dashboard():
+    selected_filter = request.args.get("filter", "active")
+    if selected_filter not in {"active", "problematic", "completed", "all"}:
+        selected_filter = "active"
+    search_query = request.args.get("q", "").strip()
+
     if g.user["role"] == "client":
-        projects = get_db().execute(
+        rows = get_db().execute(
             """
-            SELECT * FROM projects
+            SELECT
+                projects.*,
+                (
+                    SELECT COUNT(*)
+                    FROM incident_logs
+                    WHERE incident_logs.project_id = projects.id
+                ) AS incident_count,
+                (
+                    SELECT COUNT(*)
+                    FROM incident_logs
+                    WHERE incident_logs.project_id = projects.id
+                        AND follow_up_status != 'Complete'
+                ) AS open_incident_count,
+                (
+                    SELECT COUNT(*)
+                    FROM schedule_requests
+                    WHERE schedule_requests.project_id = projects.id
+                        AND status = 'Pending PM Review'
+                ) AS pending_schedule_request_count
+            FROM projects
             WHERE lower(client_name) = lower(?)
             ORDER BY updated_at DESC, id DESC
             """,
             (g.user["client_name"] or "",),
         ).fetchall()
     else:
-        projects = get_db().execute("SELECT * FROM projects ORDER BY updated_at DESC, id DESC").fetchall()
-    return render_template("dashboard.html", projects=projects)
+        rows = get_db().execute(
+            """
+            SELECT
+                projects.*,
+                (
+                    SELECT COUNT(*)
+                    FROM incident_logs
+                    WHERE incident_logs.project_id = projects.id
+                ) AS incident_count,
+                (
+                    SELECT COUNT(*)
+                    FROM incident_logs
+                    WHERE incident_logs.project_id = projects.id
+                        AND follow_up_status != 'Complete'
+                ) AS open_incident_count,
+                (
+                    SELECT COUNT(*)
+                    FROM schedule_requests
+                    WHERE schedule_requests.project_id = projects.id
+                        AND status = 'Pending PM Review'
+                ) AS pending_schedule_request_count
+            FROM projects
+            ORDER BY updated_at DESC, id DESC
+            """
+        ).fetchall()
+
+    today = date.today().isoformat()
+    projects = []
+    for row in rows:
+        project = dict(row)
+        project["is_completed"] = project["status"] == "Completed"
+        project["is_overdue"] = (
+            not project["is_completed"]
+            and bool(project["delivery_date"])
+            and project["delivery_date"] < today
+        )
+        project["risk_reasons"] = []
+        if project["open_incident_count"]:
+            project["risk_reasons"].append(f"{project['open_incident_count']} open incident")
+        if project["pending_schedule_request_count"]:
+            project["risk_reasons"].append(f"{project['pending_schedule_request_count']} schedule request")
+        if not project["is_completed"] and project["schedule_status"] != "Confirmed":
+            project["risk_reasons"].append("schedule not confirmed")
+        if project["is_overdue"]:
+            project["risk_reasons"].append("delivery overdue")
+        project["is_problematic"] = bool(project["risk_reasons"])
+        projects.append(project)
+
+    if search_query:
+        needle = search_query.casefold()
+        projects = [
+            project
+            for project in projects
+            if needle
+            in " ".join(
+                [
+                    project["project_code"] or "",
+                    project["client_name"] or "",
+                    project["site_name"] or "",
+                    project["pm_name"] or "",
+                    project["next_action"] or "",
+                ]
+            ).casefold()
+        ]
+
+    stats = {
+        "all": len(projects),
+        "active": sum(1 for project in projects if not project["is_completed"]),
+        "problematic": sum(1 for project in projects if project["is_problematic"]),
+        "completed": sum(1 for project in projects if project["is_completed"]),
+    }
+
+    if selected_filter == "active":
+        projects = [project for project in projects if not project["is_completed"]]
+    elif selected_filter == "problematic":
+        projects = [project for project in projects if project["is_problematic"]]
+    elif selected_filter == "completed":
+        projects = [project for project in projects if project["is_completed"]]
+
+    return render_template(
+        "dashboard.html",
+        projects=projects,
+        selected_filter=selected_filter,
+        search_query=search_query,
+        stats=stats,
+    )
 
 
 @app.route("/projects/new", methods=("GET", "POST"))

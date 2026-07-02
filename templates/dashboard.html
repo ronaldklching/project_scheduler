@@ -3,7 +3,7 @@
 {% block title %}Dashboard · Installation Coordination System{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <div>
         <h1 class="h3 mb-1">Project Dashboard</h1>
         <p class="text-muted mb-0">One confirmed source of truth for scope, schedule, and follow-up.</p>
@@ -25,9 +25,47 @@
     </div>
 {% endif %}
 
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+        <a class="dashboard-stat {{ 'is-active' if selected_filter == 'active' else '' }}" href="{{ url_for('dashboard', filter='active', q=search_query) }}">
+            <span class="dashboard-stat-label">Active</span>
+            <span class="dashboard-stat-value">{{ stats["active"] }}</span>
+        </a>
+    </div>
+    <div class="col-6 col-lg-3">
+        <a class="dashboard-stat dashboard-stat-warning {{ 'is-active' if selected_filter == 'problematic' else '' }}" href="{{ url_for('dashboard', filter='problematic', q=search_query) }}">
+            <span class="dashboard-stat-label">Problematic</span>
+            <span class="dashboard-stat-value">{{ stats["problematic"] }}</span>
+        </a>
+    </div>
+    <div class="col-6 col-lg-3">
+        <a class="dashboard-stat dashboard-stat-success {{ 'is-active' if selected_filter == 'completed' else '' }}" href="{{ url_for('dashboard', filter='completed', q=search_query) }}">
+            <span class="dashboard-stat-label">Completed</span>
+            <span class="dashboard-stat-value">{{ stats["completed"] }}</span>
+        </a>
+    </div>
+    <div class="col-6 col-lg-3">
+        <a class="dashboard-stat {{ 'is-active' if selected_filter == 'all' else '' }}" href="{{ url_for('dashboard', filter='all', q=search_query) }}">
+            <span class="dashboard-stat-label">All Matching</span>
+            <span class="dashboard-stat-value">{{ stats["all"] }}</span>
+        </a>
+    </div>
+</div>
+
+<form class="dashboard-toolbar mb-3" method="get">
+    <input type="hidden" name="filter" value="{{ selected_filter }}">
+    <div class="input-group">
+        <input class="form-control" name="q" value="{{ search_query }}" placeholder="Search project, client, site, PM, or next action">
+        <button class="btn btn-primary" type="submit">Search</button>
+        {% if search_query %}
+            <a class="btn btn-outline-secondary" href="{{ url_for('dashboard', filter=selected_filter) }}">Clear</a>
+        {% endif %}
+    </div>
+</form>
+
 <div class="card shadow-sm">
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+        <table class="table table-hover align-middle dashboard-table mb-0">
             <thead class="table-light">
                 <tr>
                     <th>Project Code</th>
@@ -35,18 +73,67 @@
                     <th>Site</th>
                     <th>PM</th>
                     <th>Status</th>
+                    <th>Schedule</th>
+                    <th>Incidents</th>
+                    <th>Health</th>
                     <th>Next Action</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
                 {% for project in projects %}
-                    <tr>
+                    <tr class="{% if project['is_problematic'] %}table-warning{% elif project['is_completed'] %}table-success{% endif %}">
                         <td class="fw-semibold">{{ project["project_code"] }}</td>
                         <td>{{ project["client_name"] }}</td>
                         <td>{{ project["site_name"] }}</td>
                         <td>{{ project["pm_name"] }}</td>
-                        <td><span class="badge text-bg-secondary">{{ project["status"] }}</span></td>
+                        <td>
+                            <span class="badge
+                                {% if project['status'] == 'Completed' %}text-bg-success
+                                {% elif project['status'] in ['Confirmed', 'In Progress'] %}text-bg-primary
+                                {% elif project['status'] == 'Pending Confirmation' %}text-bg-warning
+                                {% else %}text-bg-secondary{% endif %}">
+                                {{ project["status"] }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="d-flex flex-column gap-1">
+                                <span class="badge
+                                    {% if project['schedule_status'] == 'Confirmed' %}text-bg-success
+                                    {% elif project['schedule_status'] == 'Pending' %}text-bg-warning
+                                    {% else %}text-bg-secondary{% endif %}">
+                                    {{ project["schedule_status"] }}
+                                </span>
+                                {% if project["delivery_date"] %}
+                                    <span class="small {% if project['is_overdue'] %}text-danger fw-semibold{% else %}text-muted{% endif %}">
+                                        Delivery {{ project["delivery_date"] }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            {% if project["open_incident_count"] %}
+                                <span class="badge text-bg-danger">{{ project["open_incident_count"] }} open</span>
+                            {% elif project["incident_count"] %}
+                                <span class="badge text-bg-light">{{ project["incident_count"] }} logged</span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if project["risk_reasons"] %}
+                                <div class="d-flex flex-wrap gap-1">
+                                    {% for reason in project["risk_reasons"] %}
+                                        <span class="badge text-bg-danger dashboard-risk-badge">{{ reason }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <span class="badge text-bg-success">Healthy</span>
+                            {% endif %}
+                            {% if project["pending_schedule_request_count"] %}
+                                <div class="small text-muted mt-1">{{ project["pending_schedule_request_count"] }} pending request</div>
+                            {% endif %}
+                        </td>
                         <td>{{ project["next_action"] or "—" }}</td>
                         <td class="text-end">
                             <a class="btn btn-sm btn-outline-primary" href="{{ url_for('project_detail', project_id=project['id']) }}">Open</a>
@@ -54,7 +141,7 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-5">No projects yet.</td>
+                        <td colspan="10" class="text-center text-muted py-5">No projects match this view.</td>
                     </tr>
                 {% endfor %}
             </tbody>
