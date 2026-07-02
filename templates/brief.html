@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Pre-work Brief · {{ project["project_code"] }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-1">Pre-work Brief</h1>
+        <p class="text-muted mb-0">{{ project["project_code"] }} · {{ project["site_name"] }}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary" type="button" id="copyTopButton">Copy Message</button>
+        <a class="btn btn-outline-secondary" href="{{ url_for('project_detail', project_id=project['id']) }}">Back to Project</a>
+    </div>
+</div>
+
+<div class="alert alert-warning warning-panel">
+    Do not confirm dates directly with client. Refer all schedule questions to PM.
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Brief Context</h2>
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="field-label">Project</div>
+                        <div>{{ project["project_code"] }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="field-label">PM</div>
+                        <div>{{ project["pm_name"] }}</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="field-label">Site</div>
+                        <div>{{ project["site_name"] }}</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="field-label">Today’s scope</div>
+                        <div class="pre-wrap">{{ project["todays_scope"] or "To be advised by PM." }}</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="field-label">Schedule status</div>
+                        <div><span class="badge text-bg-info">{{ project["schedule_status"] }}</span></div>
+                    </div>
+                    <div class="col-12">
+                        <div class="field-label">Installation dates</div>
+                        {% if can_include_dates and installation_dates %}
+                            <div class="d-flex flex-wrap gap-2">
+                                {% for installation_date in installation_dates %}
+                                    <span class="badge text-bg-success installation-date-badge">{{ installation_date }}</span>
+                                {% endfor %}
+                            </div>
+                        {% elif can_include_dates %}
+                            <div>Confirmed, dates not entered.</div>
+                        {% else %}
+                            <div class="alert alert-danger mb-0">
+                                Installation schedule to be confirmed by PM. Do not promise any date on-site.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                    <label class="form-label fw-semibold mb-0" for="briefMessage">WhatsApp message</label>
+                    <span class="badge text-bg-light" id="copyStatus">Ready to copy</span>
+                </div>
+                <pre class="brief-message-display mb-0" id="briefMessageDisplay">{{ message }}</pre>
+                <textarea class="visually-hidden" id="briefMessage" readonly>{{ message }}</textarea>
+            </div>
+            <div class="card-footer bg-white d-flex justify-content-between align-items-center">
+                <span class="small text-muted">Review before sending to the installation team.</span>
+                <button class="btn btn-primary" type="button" id="copyButton">Copy Message</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function copyBriefMessage() {
+    const message = document.getElementById("briefMessage");
+    const status = document.getElementById("copyStatus");
+    message.select();
+    await navigator.clipboard.writeText(message.value);
+    status.textContent = "Copied";
+    status.className = "badge text-bg-success";
+}
+
+document.getElementById("copyButton").addEventListener("click", copyBriefMessage);
+document.getElementById("copyTopButton").addEventListener("click", copyBriefMessage);
+</script>
+{% endblock %}

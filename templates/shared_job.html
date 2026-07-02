@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}Job Task · {{ project["project_code"] }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Job Task · {{ project["project_code"] }}</h1>
+        <div class="text-muted">{{ project["client_name"] }} · {{ project["site_name"] }}</div>
+    </div>
+    <span class="badge text-bg-secondary">Read only</span>
+</div>
+
+<div class="alert alert-warning warning-panel">
+    Do not confirm dates directly with client. Refer all schedule questions to PM.
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Confirmed Job Information</h2>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="field-label">Project code</div>
+                        <div>{{ project["project_code"] }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">Site</div>
+                        <div>{{ project["site_name"] }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">Client</div>
+                        <div>{{ project["client_name"] }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">PM contact</div>
+                        <div>{{ project["pm_name"] }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">Digital G contact</div>
+                        <div>{{ project["digital_g_contact"] or "—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">Project status</div>
+                        <div><span class="badge text-bg-secondary">{{ project["status"] }}</span></div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">Delivery date</div>
+                        <div>{{ project["delivery_date"] or "—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">Site inspection date</div>
+                        <div>{{ project["site_inspection_date"] or "—" }}</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="field-label">Installation dates</div>
+                        {% if can_view_dates %}
+                            {% if installation_dates %}
+                                <div class="d-flex flex-wrap gap-2">
+                                    {% for installation_date in installation_dates %}
+                                        <span class="badge text-bg-success installation-date-badge">{{ installation_date }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div>—</div>
+                            {% endif %}
+                        {% else %}
+                            <div class="alert alert-danger mb-0">
+                                Installation schedule to be confirmed by PM. Do not promise any date on-site.
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">Scope of work</div>
+                        <div class="pre-wrap">{{ project["scope_of_work"] or "—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">Today's scope</div>
+                        <div class="pre-wrap">{{ project["todays_scope"] or "—" }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Next Action</h2>
+                <p>{{ project["next_action"] or "No next action recorded." }}</p>
+                <div class="field-label">PM Notes</div>
+                <div class="pre-wrap">{{ project["notes"] or "—" }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+    <h2 class="h4 mb-0">Incident Log</h2>
+    <span class="badge text-bg-light">{{ incidents|length }}</span>
+</div>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table incident-table align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="incident-date-col">Date</th>
+                    <th>Incident Details</th>
+                    <th class="incident-person-col">Responsible</th>
+                    <th class="incident-status-col">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for incident in incidents %}
+                    <tr>
+                        <td class="text-nowrap">{{ incident["incident_date"] }}</td>
+                        <td>
+                            <div class="incident-detail-block">
+                                <div class="incident-detail-item">
+                                    <div class="incident-detail-label">Issue</div>
+                                    <div class="incident-detail-text">{{ incident["issue"] }}</div>
+                                </div>
+                                <div class="incident-detail-grid">
+                                    <div class="incident-detail-item">
+                                        <div class="incident-detail-label">Root cause</div>
+                                        <div class="incident-detail-text">{{ incident["root_cause"] or "—" }}</div>
+                                    </div>
+                                    <div class="incident-detail-item">
+                                        <div class="incident-detail-label">Action taken</div>
+                                        <div class="incident-detail-text">{{ incident["action_taken"] or "—" }}</div>
+                                    </div>
+                                </div>
+                                {% if incident["attachment_filename"] %}
+                                    <div class="incident-attachment mt-3">
+                                        <div class="incident-detail-label">Attachment</div>
+                                        {% if incident["attachment_media_type"] == "image" %}
+                                            <a href="{{ url_for('static', filename=incident['attachment_filename']) }}" target="_blank" rel="noopener">
+                                                <img class="incident-media-thumb" src="{{ url_for('static', filename=incident['attachment_filename']) }}" alt="{{ incident['attachment_original_filename'] }}">
+                                            </a>
+                                        {% elif incident["attachment_media_type"] == "video" %}
+                                            <video class="incident-media-thumb" controls>
+                                                <source src="{{ url_for('static', filename=incident['attachment_filename']) }}">
+                                            </video>
+                                        {% endif %}
+                                        <div class="small text-muted mt-1">{{ incident["attachment_original_filename"] }}</div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>{{ incident["responsible_person"] or "—" }}</td>
+                        <td>
+                            <span class="badge incident-status-badge
+                                {% if incident['follow_up_status'] == 'Complete' %}text-bg-success
+                                {% elif incident['follow_up_status'] == 'In Progress' %}text-bg-warning
+                                {% else %}text-bg-secondary{% endif %}">
+                                {{ incident["follow_up_status"] }}
+                            </span>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-4">No incidents recorded.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

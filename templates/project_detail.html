@@ -1,0 +1,458 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project["project_code"] }} · Installation Coordination System{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">{{ project["project_code"] }} · {{ project["site_name"] }}</h1>
+        <div class="text-muted">{{ project["client_name"] }}</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="{{ url_for('dashboard') }}">Dashboard</a>
+        <a class="btn btn-outline-primary" href="{{ url_for('brief', project_id=project['id']) }}">Pre-work Brief</a>
+        {% if g.user["role"] in ["admin", "pm"] %}
+            <a class="btn btn-outline-success" href="{{ share_url }}" target="_blank" rel="noopener">View Share Link</a>
+            <a class="btn btn-outline-success" href="{{ site_share_url }}" target="_blank" rel="noopener">Site Team Link</a>
+        {% endif %}
+        {% if g.user["role"] in ["admin", "pm"] %}
+            <a class="btn btn-primary" href="{{ url_for('edit_project', project_id=project['id']) }}">Edit</a>
+        {% endif %}
+    </div>
+</div>
+
+{% if g.user["role"] == "installer" %}
+    <div class="alert alert-warning warning-panel">
+        Do not confirm dates directly with client. Refer all schedule questions to PM.
+    </div>
+{% endif %}
+
+{% if g.user["role"] == "client" %}
+    <div class="alert alert-info">
+        Client view is read-only. Contact the PM for schedule changes or incident follow-up.
+    </div>
+{% endif %}
+
+{% if g.user["role"] in ["admin", "pm"] %}
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <label class="form-label fw-semibold" for="shareUrl">Job task share link</label>
+            <div class="input-group">
+                <input class="form-control" id="shareUrl" value="{{ share_url }}" readonly>
+                <button class="btn btn-outline-primary" id="copyShareUrl" type="button">Copy</button>
+            </div>
+            <label class="form-label fw-semibold mt-3" for="siteShareUrl">Site team share link</label>
+            <div class="input-group">
+                <input class="form-control" id="siteShareUrl" value="{{ site_share_url }}" readonly>
+                <button class="btn btn-outline-primary" id="copySiteShareUrl" type="button">Copy</button>
+            </div>
+            <div class="form-text">Job task link includes incidents. Site team link excludes incidents and allows installation date requests. Unconfirmed installation dates are hidden.</div>
+        </div>
+    </div>
+{% endif %}
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Project Information</h2>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="field-label">Digital G contact</div>
+                        <div>{{ project["digital_g_contact"] or "—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">PM name</div>
+                        <div>{{ project["pm_name"] }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">Project status</div>
+                        <div><span class="badge text-bg-secondary">{{ project["status"] }}</span></div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">Schedule status</div>
+                        <div><span class="badge text-bg-info">{{ project["schedule_status"] }}</span></div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">Delivery date</div>
+                        <div>{{ project["delivery_date"] or "—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">Site inspection date</div>
+                        <div>{{ project["site_inspection_date"] or "—" }}</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="field-label">Installation dates</div>
+                        {% if can_view_dates %}
+                            {% if installation_dates %}
+                                <div class="d-flex flex-wrap gap-2">
+                                    {% for installation_date in installation_dates %}
+                                        <span class="badge text-bg-success installation-date-badge">{{ installation_date }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div>—</div>
+                            {% endif %}
+                        {% else %}
+                            <div class="alert alert-danger mb-0">
+                                Installation schedule to be confirmed by PM. Do not promise any date on-site.
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">Scope of work</div>
+                        <div class="pre-wrap">{{ project["scope_of_work"] or "—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">Today's scope</div>
+                        <div class="pre-wrap">{{ project["todays_scope"] or "—" }}</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="field-label">Notes</div>
+                        <div class="pre-wrap">{{ project["notes"] or "—" }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Next Action</h2>
+                <p class="mb-0">{{ project["next_action"] or "No next action recorded." }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if g.user["role"] == "client" %}
+    <div class="card shadow-sm mt-3">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Request Installation Date</h2>
+            <form method="post" action="{{ url_for('request_schedule_change', project_id=project['id']) }}">
+                <div id="requestedDatesList" class="vstack gap-2">
+                    <div class="input-group requested-date-row">
+                        <input class="form-control" name="requested_dates" type="date" required>
+                        <button class="btn btn-outline-danger remove-requested-date" type="button">Remove</button>
+                    </div>
+                </div>
+                <button class="btn btn-outline-primary btn-sm mt-2" id="addRequestedDate" type="button">Add date</button>
+                <div class="mt-3">
+                    <label class="form-label" for="request_notes">Notes for PM</label>
+                    <textarea class="form-control" id="request_notes" name="request_notes" rows="3" placeholder="Reason for request or site constraints"></textarea>
+                </div>
+                <button class="btn btn-primary mt-3" type="submit">Send Request to PM</button>
+                <div class="form-text">Requested dates are not confirmed until PM/admin approves them.</div>
+            </form>
+        </div>
+    </div>
+{% endif %}
+
+{% if schedule_requests %}
+    <div class="card shadow-sm mt-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+                <h2 class="h5 mb-0">Client Schedule Requests</h2>
+                <span class="badge text-bg-light">{{ schedule_requests|length }}</span>
+            </div>
+            <div class="vstack gap-3">
+                {% for schedule_request in schedule_requests %}
+                    <div class="schedule-request-item">
+                        <div class="d-flex flex-wrap justify-content-between gap-2">
+                            <div>
+                                <div class="field-label">Requested dates</div>
+                                <div class="d-flex flex-wrap gap-2">
+                                    {% for requested_date in schedule_request["requested_dates"].splitlines() %}
+                                        <span class="badge text-bg-primary installation-date-badge">{{ requested_date }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <span class="badge
+                                {% if schedule_request['status'] == 'Confirmed by PM' %}text-bg-success
+                                {% elif schedule_request['status'] == 'Rejected' %}text-bg-secondary
+                                {% else %}text-bg-warning{% endif %}">
+                                {{ schedule_request["status"] }}
+                            </span>
+                        </div>
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-6">
+                                <div class="field-label">Requested by</div>
+                                <div>{{ schedule_request["requested_by"] or "—" }} · {{ schedule_request["created_at"] }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="field-label">Reviewed by</div>
+                                <div>{{ schedule_request["reviewed_by"] or "—" }}{% if schedule_request["reviewed_at"] %} · {{ schedule_request["reviewed_at"] }}{% endif %}</div>
+                            </div>
+                            <div class="col-12">
+                                <div class="field-label">Notes</div>
+                                <div class="pre-wrap">{{ schedule_request["notes"] or "—" }}</div>
+                            </div>
+                        </div>
+                        {% if g.user["role"] in ["admin", "pm"] and schedule_request["status"] == "Pending PM Review" %}
+                            <div class="d-flex gap-2 mt-3">
+                                <form method="post" action="{{ url_for('review_schedule_request', project_id=project['id'], request_id=schedule_request['id'], action='confirm') }}">
+                                    <button class="btn btn-sm btn-success" type="submit">Confirm as Official Dates</button>
+                                </form>
+                                <form method="post" action="{{ url_for('review_schedule_request', project_id=project['id'], request_id=schedule_request['id'], action='reject') }}">
+                                    <button class="btn btn-sm btn-outline-secondary" type="submit">Reject</button>
+                                </form>
+                            </div>
+                        {% endif %}
+                        {% if g.user["role"] == "admin" %}
+                            <form class="mt-3" method="post" action="{{ url_for('delete_schedule_request', project_id=project['id'], request_id=schedule_request['id']) }}" onsubmit="return confirm('Delete this schedule request?');">
+                                <button class="btn btn-sm btn-outline-danger" type="submit">Delete Request</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+{% if schedule_change_logs %}
+    <div class="card shadow-sm mt-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+                <h2 class="h5 mb-0">Schedule Change Log</h2>
+                <span class="badge text-bg-light">{{ schedule_change_logs|length }}</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table schedule-log-table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Changed At</th>
+                            <th>Changed By</th>
+                            <th>Before</th>
+                            <th>After</th>
+                            <th>Reason</th>
+                            {% if g.user["role"] == "admin" %}
+                                <th></th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in schedule_change_logs %}
+                            <tr>
+                                <td class="text-nowrap">{{ log["created_at"] }}</td>
+                                <td>{{ log["changed_by"] or "—" }}</td>
+                                <td>
+                                    <div class="field-label">Status</div>
+                                    <div>{{ log["old_schedule_status"] or "—" }}</div>
+                                    <div class="field-label mt-2">Dates</div>
+                                    <div class="pre-wrap">{{ log["old_installation_dates"] or "—" }}</div>
+                                </td>
+                                <td>
+                                    <div class="field-label">Status</div>
+                                    <div>{{ log["new_schedule_status"] or "—" }}</div>
+                                    <div class="field-label mt-2">Dates</div>
+                                    <div class="pre-wrap">{{ log["new_installation_dates"] or "—" }}</div>
+                                </td>
+                                <td><div class="pre-wrap">{{ log["reason"] }}</div></td>
+                                {% if g.user["role"] == "admin" %}
+                                    <td class="text-end">
+                                        <form method="post" action="{{ url_for('delete_schedule_change_log', project_id=project['id'], log_id=log['id']) }}" onsubmit="return confirm('Delete this schedule change log?');">
+                                            <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                                        </form>
+                                    </td>
+                                {% endif %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<div class="row g-3 mt-1">
+    {% for category_key, category_label in media_categories.items() %}
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+                        <h2 class="h5 mb-0">{{ category_label }} Media</h2>
+                        <span class="badge text-bg-light">{{ media_by_category[category_key]|length }}</span>
+                    </div>
+                    {% if g.user["role"] != "client" %}
+                        <form class="upload-form mb-3" method="post" enctype="multipart/form-data" action="{{ url_for('upload_project_media', project_id=project['id']) }}">
+                            <input type="hidden" name="category" value="{{ category_key }}">
+                            <div class="input-group">
+                                <input class="form-control" name="media_file" type="file" accept="image/*,video/mp4,video/quicktime,video/webm" required>
+                                <button class="btn btn-outline-primary" type="submit">Upload</button>
+                            </div>
+                            <div class="form-text">Photos or short videos, up to 100 MB.</div>
+                        </form>
+                    {% endif %}
+
+                    {% if media_by_category[category_key] %}
+                        <div class="media-grid">
+                            {% for media in media_by_category[category_key] %}
+                                <div class="media-card">
+                                    {% if media["media_type"] == "image" %}
+                                        <a href="{{ url_for('static', filename=media['stored_filename']) }}" target="_blank" rel="noopener">
+                                            <img class="media-thumb" src="{{ url_for('static', filename=media['stored_filename']) }}" alt="{{ media['original_filename'] }}">
+                                        </a>
+                                    {% elif media["media_type"] == "video" %}
+                                        <video class="media-thumb" controls>
+                                            <source src="{{ url_for('static', filename=media['stored_filename']) }}">
+                                        </video>
+                                    {% endif %}
+                                    <div class="media-meta">
+                                        <div class="text-truncate" title="{{ media['original_filename'] }}">{{ media["original_filename"] }}</div>
+                                        <div>By {{ media["uploaded_by"] or "—" }} · {{ media["created_at"] }}</div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-muted small">No {{ category_label|lower }} media uploaded yet.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+    <h2 class="h4 mb-0">Incident Log</h2>
+    {% if g.user["role"] in ["admin", "pm"] %}
+        <a class="btn btn-sm btn-primary" href="{{ url_for('create_incident', project_id=project['id']) }}">Add Incident</a>
+    {% endif %}
+</div>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table incident-table align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="incident-date-col">Date</th>
+                    <th>Incident Details</th>
+                    <th class="incident-person-col">Responsible</th>
+                    <th class="incident-status-col">Status</th>
+                    {% if g.user["role"] in ["admin", "pm"] %}
+                        <th class="incident-action-col"></th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for incident in incidents %}
+                    <tr>
+                        <td class="text-nowrap">{{ incident["incident_date"] }}</td>
+                        <td>
+                            <div class="incident-detail-block">
+                                <div class="incident-detail-item">
+                                    <div class="incident-detail-label">Issue</div>
+                                    <div class="incident-detail-text">{{ incident["issue"] }}</div>
+                                </div>
+                                <div class="incident-detail-grid">
+                                    <div class="incident-detail-item">
+                                        <div class="incident-detail-label">Root cause</div>
+                                        <div class="incident-detail-text">{{ incident["root_cause"] or "—" }}</div>
+                                    </div>
+                                    <div class="incident-detail-item">
+                                        <div class="incident-detail-label">Action taken</div>
+                                        <div class="incident-detail-text">{{ incident["action_taken"] or "—" }}</div>
+                                    </div>
+                                </div>
+                                {% if incident["attachment_filename"] %}
+                                    <div class="incident-attachment mt-3">
+                                        <div class="incident-detail-label">Attachment</div>
+                                        {% if incident["attachment_media_type"] == "image" %}
+                                            <a href="{{ url_for('static', filename=incident['attachment_filename']) }}" target="_blank" rel="noopener">
+                                                <img class="incident-media-thumb" src="{{ url_for('static', filename=incident['attachment_filename']) }}" alt="{{ incident['attachment_original_filename'] }}">
+                                            </a>
+                                        {% elif incident["attachment_media_type"] == "video" %}
+                                            <video class="incident-media-thumb" controls>
+                                                <source src="{{ url_for('static', filename=incident['attachment_filename']) }}">
+                                            </video>
+                                        {% endif %}
+                                        <div class="small text-muted mt-1">{{ incident["attachment_original_filename"] }}</div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>{{ incident["responsible_person"] or "—" }}</td>
+                        <td>
+                            <span class="badge incident-status-badge
+                                {% if incident['follow_up_status'] == 'Complete' %}text-bg-success
+                                {% elif incident['follow_up_status'] == 'In Progress' %}text-bg-warning
+                                {% else %}text-bg-secondary{% endif %}">
+                                {{ incident["follow_up_status"] }}
+                            </span>
+                        </td>
+                        {% if g.user["role"] in ["admin", "pm"] %}
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('edit_incident', project_id=project['id'], incident_id=incident['id']) }}">Edit</a>
+                            </td>
+                        {% endif %}
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="{{ 5 if g.user['role'] in ['admin', 'pm'] else 4 }}" class="text-center text-muted py-4">No incidents recorded.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const copyShareButton = document.getElementById("copyShareUrl");
+if (copyShareButton) {
+    copyShareButton.addEventListener("click", async () => {
+        const shareUrl = document.getElementById("shareUrl");
+        shareUrl.select();
+        await navigator.clipboard.writeText(shareUrl.value);
+    });
+}
+
+const copySiteShareButton = document.getElementById("copySiteShareUrl");
+if (copySiteShareButton) {
+    copySiteShareButton.addEventListener("click", async () => {
+        const siteShareUrl = document.getElementById("siteShareUrl");
+        siteShareUrl.select();
+        await navigator.clipboard.writeText(siteShareUrl.value);
+    });
+}
+
+const requestedDatesList = document.getElementById("requestedDatesList");
+const addRequestedDateButton = document.getElementById("addRequestedDate");
+
+function updateRequestedDateRemoveButtons() {
+    if (!requestedDatesList) {
+        return;
+    }
+    const rows = requestedDatesList.querySelectorAll(".requested-date-row");
+    rows.forEach((row) => {
+        row.querySelector(".remove-requested-date").disabled = rows.length === 1;
+    });
+}
+
+if (addRequestedDateButton) {
+    addRequestedDateButton.addEventListener("click", () => {
+        const row = document.createElement("div");
+        row.className = "input-group requested-date-row";
+        row.innerHTML = `
+            <input class="form-control" name="requested_dates" type="date" required>
+            <button class="btn btn-outline-danger remove-requested-date" type="button">Remove</button>
+        `;
+        requestedDatesList.appendChild(row);
+        updateRequestedDateRemoveButtons();
+    });
+}
+
+if (requestedDatesList) {
+    requestedDatesList.addEventListener("click", (event) => {
+        if (!event.target.classList.contains("remove-requested-date")) {
+            return;
+        }
+        event.target.closest(".requested-date-row").remove();
+        updateRequestedDateRemoveButtons();
+    });
+    updateRequestedDateRemoveButtons();
+}
+</script>
+{% endblock %}

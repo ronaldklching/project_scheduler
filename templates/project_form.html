@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}{{ "Edit" if project else "New" }} Project · Installation Coordination System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">{{ "Edit Project" if project else "New Project" }}</h1>
+    <a class="btn btn-outline-secondary" href="{{ url_for('project_detail', project_id=project['id']) if project else url_for('dashboard') }}">Cancel</a>
+</div>
+
+<form method="post" class="card shadow-sm">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label" for="project_code">Project code</label>
+                <input class="form-control" id="project_code" name="project_code" value="{{ project['project_code'] if project else '' }}" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="client_name">Client name</label>
+                <input class="form-control" id="client_name" name="client_name" value="{{ project['client_name'] if project else '' }}" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="site_name">Site name</label>
+                <input class="form-control" id="site_name" name="site_name" value="{{ project['site_name'] if project else '' }}" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="digital_g_contact">Digital G contact</label>
+                <input class="form-control" id="digital_g_contact" name="digital_g_contact" value="{{ project['digital_g_contact'] if project else '' }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="pm_name">PM name</label>
+                <input class="form-control" id="pm_name" name="pm_name" value="{{ project['pm_name'] if project else '' }}" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="status">Project status</label>
+                <select class="form-select" id="status" name="status">
+                    {% for status in project_statuses %}
+                        <option value="{{ status }}" {% if project and project["status"] == status %}selected{% endif %}>{{ status }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="delivery_date">Delivery date</label>
+                <input class="form-control" id="delivery_date" name="delivery_date" type="date" value="{{ project['delivery_date'] if project else '' }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="site_inspection_date">Site inspection date</label>
+                <input class="form-control" id="site_inspection_date" name="site_inspection_date" type="date" value="{{ project['site_inspection_date'] if project else '' }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="schedule_status">Schedule status</label>
+                <select class="form-select" id="schedule_status" name="schedule_status">
+                    {% for status in schedule_statuses %}
+                        <option value="{{ status }}" {% if project and project["schedule_status"] == status %}selected{% endif %}>{{ status }}</option>
+                    {% endfor %}
+                </select>
+                <div class="form-text">Only admin/PM users can confirm schedules.</div>
+            </div>
+            <div class="col-12">
+                <label class="form-label">Installation dates</label>
+                <div id="installationDatesList" class="vstack gap-2">
+                    {% for date_value in installation_date_values %}
+                        <div class="input-group installation-date-row">
+                            <input class="form-control" name="installation_dates" type="date" value="{{ date_value }}">
+                            <button class="btn btn-outline-danger remove-installation-date" type="button">Remove</button>
+                        </div>
+                    {% endfor %}
+                </div>
+                <button class="btn btn-outline-primary btn-sm mt-2" id="addInstallationDate" type="button">Add date</button>
+                <div class="form-text">Add each confirmed installation day separately. Installers only see these dates when schedule status is Confirmed.</div>
+            </div>
+            {% if project %}
+                <div class="col-12">
+                    <label class="form-label" for="schedule_change_reason">Schedule change reason</label>
+                    <textarea class="form-control" id="schedule_change_reason" name="schedule_change_reason" rows="3" placeholder="Required if installation dates or schedule status are changed"></textarea>
+                    <div class="form-text">This reason is saved in the schedule change log when dates or schedule status change.</div>
+                </div>
+            {% endif %}
+            <div class="col-md-6">
+                <label class="form-label" for="scope_of_work">Scope of work</label>
+                <textarea class="form-control" id="scope_of_work" name="scope_of_work" rows="5">{{ project['scope_of_work'] if project else '' }}</textarea>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="todays_scope">Today's scope</label>
+                <textarea class="form-control" id="todays_scope" name="todays_scope" rows="5">{{ project['todays_scope'] if project else '' }}</textarea>
+            </div>
+            <div class="col-12">
+                <label class="form-label" for="next_action">Next action</label>
+                <input class="form-control" id="next_action" name="next_action" value="{{ project['next_action'] if project else '' }}">
+            </div>
+            <div class="col-12">
+                <label class="form-label" for="notes">Notes</label>
+                <textarea class="form-control" id="notes" name="notes" rows="4">{{ project['notes'] if project else '' }}</textarea>
+            </div>
+        </div>
+    </div>
+    <div class="card-footer bg-white text-end">
+        <button class="btn btn-primary" type="submit">Save Project</button>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const datesList = document.getElementById("installationDatesList");
+const addDateButton = document.getElementById("addInstallationDate");
+
+function updateRemoveButtons() {
+    const rows = datesList.querySelectorAll(".installation-date-row");
+    rows.forEach((row) => {
+        row.querySelector(".remove-installation-date").disabled = rows.length === 1;
+    });
+}
+
+function createDateRow() {
+    const row = document.createElement("div");
+    row.className = "input-group installation-date-row";
+    row.innerHTML = `
+        <input class="form-control" name="installation_dates" type="date">
+        <button class="btn btn-outline-danger remove-installation-date" type="button">Remove</button>
+    `;
+    datesList.appendChild(row);
+    updateRemoveButtons();
+}
+
+addDateButton.addEventListener("click", createDateRow);
+datesList.addEventListener("click", (event) => {
+    if (!event.target.classList.contains("remove-installation-date")) {
+        return;
+    }
+    event.target.closest(".installation-date-row").remove();
+    updateRemoveButtons();
+});
+updateRemoveButtons();
+</script>
+{% endblock %}

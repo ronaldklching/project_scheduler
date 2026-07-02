@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Users · Installation Coordination System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-1">User Management</h1>
+        <p class="text-muted mb-0">Create users, assign roles, and control client access.</p>
+    </div>
+    <a class="btn btn-primary" href="{{ url_for('create_user') }}">New User</a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Client Name</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                    <tr>
+                        <td class="fw-semibold">{{ user["username"] }}</td>
+                        <td><span class="badge text-bg-secondary">{{ user["role"] }}</span></td>
+                        <td>{{ user["client_name"] or "—" }}</td>
+                        <td>
+                            {% if user["active"] %}
+                                <span class="badge text-bg-success">Active</span>
+                            {% else %}
+                                <span class="badge text-bg-secondary">Disabled</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('edit_user', user_id=user['id']) }}">Edit</a>
+                            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('reset_user_password', user_id=user['id']) }}">Reset Password</a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">No users found.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

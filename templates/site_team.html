@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Site Team · {{ project["project_code"] }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Site Team · {{ project["project_code"] }}</h1>
+        <div class="text-muted">{{ project["site_name"] }}</div>
+    </div>
+    <span class="badge text-bg-secondary">Site team view</span>
+</div>
+
+<div class="alert alert-warning warning-panel">
+    Installation dates are not official until confirmed by PM. Do not promise dates on-site.
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Job Information</h2>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="field-label">Project code</div>
+                        <div>{{ project["project_code"] }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">Site</div>
+                        <div>{{ project["site_name"] }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">PM contact</div>
+                        <div>{{ project["pm_name"] }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">Project status</div>
+                        <div><span class="badge text-bg-secondary">{{ project["status"] }}</span></div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">Delivery date</div>
+                        <div>{{ project["delivery_date"] or "—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">Site inspection date</div>
+                        <div>{{ project["site_inspection_date"] or "—" }}</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="field-label">Installation dates</div>
+                        {% if can_view_dates %}
+                            {% if installation_dates %}
+                                <div class="d-flex flex-wrap gap-2">
+                                    {% for installation_date in installation_dates %}
+                                        <span class="badge text-bg-success installation-date-badge">{{ installation_date }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div>—</div>
+                            {% endif %}
+                        {% else %}
+                            <div class="alert alert-danger mb-0">
+                                Installation schedule to be confirmed by PM. Do not promise any date on-site.
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">Scope of work</div>
+                        <div class="pre-wrap">{{ project["scope_of_work"] or "—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="field-label">Today's scope</div>
+                        <div class="pre-wrap">{{ project["todays_scope"] or "—" }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Next Action</h2>
+                <p class="mb-0">{{ project["next_action"] or "No next action recorded." }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mt-3">
+    <div class="card-body">
+        <h2 class="h5 mb-3">Request Installation Date</h2>
+        <form method="post" action="{{ url_for('site_team_schedule_request', share_code=project['share_code']) }}">
+            <div class="mb-3">
+                <label class="form-label" for="requested_by">Your name / team</label>
+                <input class="form-control" id="requested_by" name="requested_by" placeholder="Example: Site team, John, Gammon site office">
+            </div>
+            <div id="siteRequestedDatesList" class="vstack gap-2">
+                <div class="input-group site-requested-date-row">
+                    <input class="form-control" name="requested_dates" type="date" required>
+                    <button class="btn btn-outline-danger remove-site-requested-date" type="button">Remove</button>
+                </div>
+            </div>
+            <button class="btn btn-outline-primary btn-sm mt-2" id="addSiteRequestedDate" type="button">Add date</button>
+            <div class="mt-3">
+                <label class="form-label" for="request_notes">Notes for PM</label>
+                <textarea class="form-control" id="request_notes" name="request_notes" rows="3" placeholder="Access limits, preferred working hours, site constraints"></textarea>
+            </div>
+            <button class="btn btn-primary mt-3" type="submit">Send Request to PM</button>
+            <div class="form-text">Requests are reviewed by PM before becoming official installation dates.</div>
+        </form>
+    </div>
+</div>
+
+{% if schedule_requests %}
+    <div class="card shadow-sm mt-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+                <h2 class="h5 mb-0">Schedule Requests</h2>
+                <span class="badge text-bg-light">{{ schedule_requests|length }}</span>
+            </div>
+            <div class="vstack gap-3">
+                {% for schedule_request in schedule_requests %}
+                    <div class="schedule-request-item">
+                        <div class="d-flex flex-wrap justify-content-between gap-2">
+                            <div>
+                                <div class="field-label">Requested dates</div>
+                                <div class="d-flex flex-wrap gap-2">
+                                    {% for requested_date in schedule_request["requested_dates"].splitlines() %}
+                                        <span class="badge text-bg-primary installation-date-badge">{{ requested_date }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <span class="badge
+                                {% if schedule_request['status'] == 'Confirmed by PM' %}text-bg-success
+                                {% elif schedule_request['status'] == 'Rejected' %}text-bg-secondary
+                                {% else %}text-bg-warning{% endif %}">
+                                {{ schedule_request["status"] }}
+                            </span>
+                        </div>
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-6">
+                                <div class="field-label">Requested by</div>
+                                <div>{{ schedule_request["requested_by"] or "—" }} · {{ schedule_request["created_at"] }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="field-label">Reviewed by</div>
+                                <div>{{ schedule_request["reviewed_by"] or "—" }}{% if schedule_request["reviewed_at"] %} · {{ schedule_request["reviewed_at"] }}{% endif %}</div>
+                            </div>
+                            <div class="col-12">
+                                <div class="field-label">Notes</div>
+                                <div class="pre-wrap">{{ schedule_request["notes"] or "—" }}</div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const siteRequestedDatesList = document.getElementById("siteRequestedDatesList");
+const addSiteRequestedDateButton = document.getElementById("addSiteRequestedDate");
+
+function updateSiteRequestedDateRemoveButtons() {
+    const rows = siteRequestedDatesList.querySelectorAll(".site-requested-date-row");
+    rows.forEach((row) => {
+        row.querySelector(".remove-site-requested-date").disabled = rows.length === 1;
+    });
+}
+
+addSiteRequestedDateButton.addEventListener("click", () => {
+    const row = document.createElement("div");
+    row.className = "input-group site-requested-date-row";
+    row.innerHTML = `
+        <input class="form-control" name="requested_dates" type="date" required>
+        <button class="btn btn-outline-danger remove-site-requested-date" type="button">Remove</button>
+    `;
+    siteRequestedDatesList.appendChild(row);
+    updateSiteRequestedDateRemoveButtons();
+});
+
+siteRequestedDatesList.addEventListener("click", (event) => {
+    if (!event.target.classList.contains("remove-site-requested-date")) {
+        return;
+    }
+    event.target.closest(".site-requested-date-row").remove();
+    updateSiteRequestedDateRemoveButtons();
+});
+updateSiteRequestedDateRemoveButtons();
+</script>
+{% endblock %}

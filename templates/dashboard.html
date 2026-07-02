@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard · Installation Coordination System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-1">Project Dashboard</h1>
+        <p class="text-muted mb-0">One confirmed source of truth for scope, schedule, and follow-up.</p>
+    </div>
+    {% if g.user["role"] in ["admin", "pm"] %}
+        <a class="btn btn-primary" href="{{ url_for('create_project') }}">New Project</a>
+    {% endif %}
+</div>
+
+{% if g.user["role"] == "installer" %}
+    <div class="alert alert-warning warning-panel">
+        Do not confirm dates directly with client. Refer all schedule questions to PM.
+    </div>
+{% endif %}
+
+{% if g.user["role"] == "client" %}
+    <div class="alert alert-info">
+        You are viewing projects assigned to {{ g.user["client_name"] }}. This account is read-only.
+    </div>
+{% endif %}
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Project Code</th>
+                    <th>Client</th>
+                    <th>Site</th>
+                    <th>PM</th>
+                    <th>Status</th>
+                    <th>Next Action</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for project in projects %}
+                    <tr>
+                        <td class="fw-semibold">{{ project["project_code"] }}</td>
+                        <td>{{ project["client_name"] }}</td>
+                        <td>{{ project["site_name"] }}</td>
+                        <td>{{ project["pm_name"] }}</td>
+                        <td><span class="badge text-bg-secondary">{{ project["status"] }}</span></td>
+                        <td>{{ project["next_action"] or "—" }}</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('project_detail', project_id=project['id']) }}">Open</a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-5">No projects yet.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
